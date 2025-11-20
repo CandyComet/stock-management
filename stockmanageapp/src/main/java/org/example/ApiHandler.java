@@ -1,9 +1,9 @@
 package org.example;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -11,10 +11,10 @@ import java.nio.file.Files;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Scanner;
 
 public class ApiHandler {
-    private final String URL = "jdbc:mysql://localhost:3306/stock_manage?useSSL=false&serverTimezone=UTC";
+    private final String URL = "jdbc:mysql://localhost:3306/stock_manage?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC";
     private final String USER = "root";
     private final String PASS = "Blink_123";
 
@@ -35,6 +35,20 @@ public class ApiHandler {
                             "email VARCHAR(100) NOT NULL," +
                             "phone VARCHAR(20) NOT NULL," +
                             "password VARCHAR(255) NOT NULL)");
+                }
+
+                try (PreparedStatement ps = c.prepareStatement("SELECT COUNT(*) AS cnt FROM admins");
+                     ResultSet rs = ps.executeQuery()) {
+                    if (rs.next() && rs.getInt("cnt") == 0) {
+                        try (PreparedStatement ins = c.prepareStatement(
+                                "INSERT INTO admins (username, email, phone, password) VALUES (?,?,?,?)")) {
+                            ins.setString(1, "admin");
+                            ins.setString(2, "admin");
+                            ins.setString(3, "0000000000");
+                            ins.setString(4, "admin");
+                            ins.executeUpdate();
+                        }
+                    }
                 }
             }
         } catch (ClassNotFoundException | SQLException e) {
@@ -239,32 +253,18 @@ public class ApiHandler {
         }
     }
 
-    public List<String> getAllImageNames() {
-        try {
-            File dir = new File("file_upload");
-            if (!dir.exists() || !dir.isDirectory()) return new ArrayList<>();
-            return Files.list(dir.toPath()).map(p -> p.getFileName().toString()).collect(Collectors.toList());
-        } catch (IOException e) {
-            e.printStackTrace();
-            return new ArrayList<>();
-        }
-    }
-
     public static void SaveImageFile(File file) {
         try {
             String boundary = "----JavaBoundary" + System.currentTimeMillis();
-
             String bodyStart = "--" + boundary + "\r\n"
                     + "Content-Disposition: form-data; name=\"file\"; filename=\"" + file.getName() + "\"\r\n"
                     + "Content-Type: image/png\r\n\r\n";
-
             String bodyEnd = "\r\n--" + boundary + "--\r\n";
 
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             outputStream.write(bodyStart.getBytes());
             Files.copy(file.toPath(), outputStream);
             outputStream.write(bodyEnd.getBytes());
-
             byte[] requestBody = outputStream.toByteArray();
 
             HttpRequest request = HttpRequest.newBuilder()
@@ -275,11 +275,30 @@ public class ApiHandler {
 
             HttpClient client = HttpClient.newHttpClient();
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
             System.out.println("Status Code: " + response.statusCode());
             System.out.println("Response: " + response.body());
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public List<String> getAllImageFiles() {
+        List<String> list = new ArrayList<>();
+
+        try {
+            URL url = new URL("http://localhost:8080/stock/all-images");
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("GET");
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(con.getInputStream()));
+            String line;
+            while ((line = br.readLine()) != null) list.add(line.trim());
+            br.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return list;
     }
 }

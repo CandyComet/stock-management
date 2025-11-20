@@ -63,7 +63,7 @@ public class StockAPI {
     }
 
     // ------------------ UPLOAD IMAGE ------------------
-    @PostMapping("upload-images")
+    @PostMapping("/upload-images")
     public String uploadFile(@RequestParam("file") MultipartFile file) {
         try {
             return fileUploadServices.saveImage(file);
@@ -72,30 +72,30 @@ public class StockAPI {
         }
     }
 
-    // ------------------ VIEW ALL IMAGES ------------------
-    @GetMapping("/images")
+    @GetMapping("/all-images")
     public List<String> getAllImages() {
-        File folder = new File("file_upload/");
+        File folder = new File("file_upload/images/");
         File[] files = folder.listFiles();
-        List<String> imageUrls = new ArrayList<>();
+
+        List<String> list = new ArrayList<>();
 
         if (files != null) {
             for (File file : files) {
                 if (file.isFile()) {
-                    imageUrls.add("http://localhost:8080/stockapp/images/" + file.getName());
+                    list.add("http://localhost:8080/stock/image/" + file.getName());
                 }
             }
         }
-        return imageUrls;
+        return list;
     }
 
-    // ------------------ SERVE SINGLE IMAGE ------------------
-    @GetMapping("/images/{filename}")
+
+    @GetMapping("/image/{filename}")
     public ResponseEntity<Resource> getImage(@PathVariable String filename) throws IOException {
-        Path path = Paths.get("file_upload/").resolve(filename);
+        Path path = Paths.get("file_upload/images/").resolve(filename);
         Resource resource = new UrlResource(path.toUri());
 
-        if (resource.exists() || resource.isReadable()) {
+        if (resource.exists() && resource.isReadable()) {
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_TYPE, Files.probeContentType(path))
                     .body(resource);

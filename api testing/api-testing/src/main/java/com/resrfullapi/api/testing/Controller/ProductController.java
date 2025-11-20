@@ -16,7 +16,8 @@ public class ProductController {
 
     @GetMapping("/all")
     public List<ProductModel> getAllProducts() {
-        return stockManage.findAll();
+        System.out.println("");
+        return   stockManage.findAll();
     }
 
     @PostMapping("/add")
